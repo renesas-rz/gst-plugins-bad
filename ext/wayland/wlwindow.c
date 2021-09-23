@@ -251,7 +251,7 @@ gst_wl_window_ensure_fullscreen (GstWlWindow * window, gboolean fullscreen)
 
 GstWlWindow *
 gst_wl_window_new_toplevel (GstWlDisplay * display, const GstVideoInfo * info,
-    gboolean fullscreen, GMutex * render_lock)
+    gboolean fullscreen, GMutex * render_lock, gint posx, gint posy)
 {
   GstWlWindow *window;
 
@@ -282,6 +282,14 @@ gst_wl_window_new_toplevel (GstWlDisplay * display, const GstVideoInfo * info,
 
     gst_wl_window_ensure_fullscreen (window, fullscreen);
 
+    /* We expect wayland server can handle set new position by new window geometry */
+    if (!fullscreen && (posx != -1) && (posy != -1)){
+      /* Only re-position when input valid position and not fullscreen mode*/
+      gint width =
+        gst_util_uint64_scale_int_round (info->width, info->par_n, info->par_d);
+      xdg_surface_set_window_geometry(window->xdg_surface, posx, posy, width, info->height);
+    }
+
     /* Finally, commit the xdg_surface state as toplevel */
     window->configured = FALSE;
     wl_surface_commit (window->video_surface);
@@ -308,6 +316,13 @@ gst_wl_window_new_toplevel (GstWlDisplay * display, const GstVideoInfo * info,
 
     wl_shell_surface_add_listener (window->wl_shell_surface,
         &wl_shell_surface_listener, window);
+
+    /* We expect wayland server can handle new position by set_transient API*/
+    if (!fullscreen && (posx != -1) && (posy != -1)){
+      /* Only re-position when input valid position and not fullscreen mode*/
+      wl_shell_surface_set_transient (window->wl_shell_surface, window->area_surface, posx, posy, 0);
+    }
+
     gst_wl_window_ensure_fullscreen (window, fullscreen);
   } else if (display->fullscreen_shell) {
     zwp_fullscreen_shell_v1_present_surface (display->fullscreen_shell,

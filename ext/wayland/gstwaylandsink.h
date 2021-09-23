@@ -73,6 +73,8 @@ struct _GstWaylandSink
   struct wl_callback *callback;
   gboolean use_subsurface;
   gboolean enable_interlace;
+  gint position_x;
+  gint position_y;
 };
 
 struct _GstWaylandSinkClass

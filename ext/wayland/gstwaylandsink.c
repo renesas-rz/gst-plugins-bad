@@ -65,7 +65,9 @@ enum
   PROP_DISPLAY,
   PROP_FULLSCREEN,
   PROP_USE_SUBSURFACE,
-  PROP_SUPPRESS_INTERLACE
+  PROP_SUPPRESS_INTERLACE,
+  PROP_WAYLAND_POSITION_X,    /* add property (position_x) */
+  PROP_WAYLAND_POSITION_Y,    /* add property (position_y) */
 };
 
 #define DEFAULT_USE_SUBSURFACE          TRUE
@@ -225,6 +227,19 @@ gst_wayland_sink_class_init (GstWaylandSinkClass * klass)
           "When enabled, dmabuf are created without flag of interlaced buffer",
           DEFAULT_SUPPRESS_INTERLACE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  /* install property (position_x) */
+  g_object_class_install_property (G_OBJECT_CLASS(klass), PROP_WAYLAND_POSITION_X,
+      g_param_spec_int ("position_x", "Position_X",
+                        "Wayland  Position X value from the application ",
+                        0, G_MAXINT, 0, G_PARAM_READWRITE));
+
+  /* install property (position_y) */
+  g_object_class_install_property (G_OBJECT_CLASS(klass), PROP_WAYLAND_POSITION_Y,
+      g_param_spec_int ("position_y", "Position_Y",
+                        "Wayland  Position Y value from the application ",
+                        0, G_MAXINT, 0, G_PARAM_READWRITE));
+
 }
 
 static void
@@ -235,6 +250,8 @@ gst_wayland_sink_init (GstWaylandSink * sink)
 
   sink->use_subsurface = DEFAULT_USE_SUBSURFACE;
   sink->enable_interlace = !DEFAULT_SUPPRESS_INTERLACE;
+  sink->position_x = -1;
+  sink->position_y = -1;
 }
 
 static void
@@ -275,6 +292,14 @@ gst_wayland_sink_get_property (GObject * object,
       g_value_set_boolean (value, !sink->enable_interlace);
       GST_OBJECT_UNLOCK (sink);
       break;
+    case PROP_WAYLAND_POSITION_X:
+      /* set position_x property */
+      g_value_set_int (value, sink->position_x);
+      break;
+    case PROP_WAYLAND_POSITION_Y:
+      /* set position_y property */
+      g_value_set_int (value, sink->position_y);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -308,6 +333,14 @@ gst_wayland_sink_set_property (GObject * object,
       GST_OBJECT_LOCK (sink);
       sink->enable_interlace = !g_value_get_boolean (value);
       GST_OBJECT_UNLOCK (sink);
+      break;
+    case PROP_WAYLAND_POSITION_X:
+      /* get position_x property */
+      sink->position_x = g_value_get_int (value);
+      break;
+    case PROP_WAYLAND_POSITION_Y:
+      /* get position_y property */
+      sink->position_y = g_value_get_int (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -747,7 +780,8 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
     if (!sink->window) {
       /* if we were not provided a window, create one ourselves */
       sink->window = gst_wl_window_new_toplevel (sink->display,
-          &sink->video_info, sink->fullscreen, &sink->render_lock);
+          &sink->video_info, sink->fullscreen, &sink->render_lock,
+          sink->position_x, sink->position_y);
       g_signal_connect_object (sink->window, "closed",
           G_CALLBACK (on_window_closed), sink, 0);
     }
