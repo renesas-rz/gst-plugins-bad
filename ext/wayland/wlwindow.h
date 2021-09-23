@@ -86,7 +86,7 @@ void gst_wl_window_ensure_fullscreen (GstWlWindow * window,
         gboolean fullscreen);
 GstWlWindow *gst_wl_window_new_toplevel (GstWlDisplay * display,
         const GstVideoInfo * info, gboolean fullscreen, GMutex * render_lock,
-        gint posx, gint posy);
+        gint posx, gint posy, gint out_w, gint out_h);
 GstWlWindow *gst_wl_window_new_in_surface (GstWlDisplay * display,
         struct wl_surface * parent, GMutex * render_lock);
 

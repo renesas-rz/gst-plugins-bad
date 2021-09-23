@@ -75,6 +75,8 @@ struct _GstWaylandSink
   gboolean enable_interlace;
   gint position_x;
   gint position_y;
+  gint out_w;
+  gint out_h;
 };
 
 struct _GstWaylandSinkClass

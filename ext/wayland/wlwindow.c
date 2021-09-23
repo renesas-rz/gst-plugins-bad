@@ -251,9 +251,21 @@ gst_wl_window_ensure_fullscreen (GstWlWindow * window, gboolean fullscreen)
 
 GstWlWindow *
 gst_wl_window_new_toplevel (GstWlDisplay * display, const GstVideoInfo * info,
-    gboolean fullscreen, GMutex * render_lock, gint posx, gint posy)
+    gboolean fullscreen, GMutex * render_lock, gint posx, gint posy,
+    gint out_w, gint out_h)
 {
   GstWlWindow *window;
+  gint surf_w =
+       gst_util_uint64_scale_int_round (info->width, info->par_n, info->par_d);
+  gint surf_h = info->height;
+
+  /* Define the display size of client in wayland server.
+   * The initial size of client no need to change.
+   */
+  if (out_w > 1)
+    surf_w = out_w;
+  if (out_h > 1)
+    surf_h = out_h;
 
   window = gst_wl_window_new_internal (display, render_lock);
 
@@ -282,12 +294,14 @@ gst_wl_window_new_toplevel (GstWlDisplay * display, const GstVideoInfo * info,
 
     gst_wl_window_ensure_fullscreen (window, fullscreen);
 
-    /* We expect wayland server can handle set new position by new window geometry */
-    if (!fullscreen && (posx != -1) && (posy != -1)){
-      /* Only re-position when input valid position and not fullscreen mode*/
-      gint width =
-        gst_util_uint64_scale_int_round (info->width, info->par_n, info->par_d);
-      xdg_surface_set_window_geometry(window->xdg_surface, posx, posy, width, info->height);
+    /* Only re-configure new window geometry when not fullscreen mode
+     * Wayland Server should handle the position is valid or not
+     */
+    if (!fullscreen){
+      /* Expect Wayland Server can handle new geometry of xdg_surface */
+      xdg_surface_set_window_geometry(window->xdg_surface,
+                                      posx, posy,
+                                      surf_w, surf_h);
     }
 
     /* Finally, commit the xdg_surface state as toplevel */
@@ -317,10 +331,18 @@ gst_wl_window_new_toplevel (GstWlDisplay * display, const GstVideoInfo * info,
     wl_shell_surface_add_listener (window->wl_shell_surface,
         &wl_shell_surface_listener, window);
 
-    /* We expect wayland server can handle new position by set_transient API*/
-    if (!fullscreen && (posx != -1) && (posy != -1)){
-      /* Only re-position when input valid position and not fullscreen mode*/
-      wl_shell_surface_set_transient (window->wl_shell_surface, window->area_surface, posx, posy, 0);
+    /* Only re-configure new window geometry when not fullscreen mode
+     * Wayland Server should handle the position is valid or not
+     */
+    if (!fullscreen){
+      /* Expect wayland server can handle new geometry by
+       * transient API of wl_shell_surface.
+       * We use flag parameter of set_transient to store the new surface size
+       */
+      wl_shell_surface_set_transient (window->wl_shell_surface,
+                                      window->area_surface,
+                                      posx, posy,
+                                      surf_w << 16 | surf_h );
     }
 
     gst_wl_window_ensure_fullscreen (window, fullscreen);

@@ -68,6 +68,8 @@ enum
   PROP_SUPPRESS_INTERLACE,
   PROP_WAYLAND_POSITION_X,    /* add property (position_x) */
   PROP_WAYLAND_POSITION_Y,    /* add property (position_y) */
+  PROP_WAYLAND_OUTPUT_WIDTH,    /* add property (out_w) */
+  PROP_WAYLAND_OUTPUT_HEIGHT,   /* add property (out_h) */
 };
 
 #define DEFAULT_USE_SUBSURFACE          TRUE
@@ -240,6 +242,18 @@ gst_wayland_sink_class_init (GstWaylandSinkClass * klass)
                         "Wayland  Position Y value from the application ",
                         0, G_MAXINT, 0, G_PARAM_READWRITE));
 
+  /* install property (out_w) */
+  g_object_class_install_property (G_OBJECT_CLASS(klass), PROP_WAYLAND_OUTPUT_WIDTH,
+      g_param_spec_int ("out_w", "Output Width",
+                        "Wayland  Width size of application ",
+                        0, G_MAXINT, 0, G_PARAM_READWRITE));
+
+  /* install property (out_h) */
+  g_object_class_install_property (G_OBJECT_CLASS(klass), PROP_WAYLAND_OUTPUT_HEIGHT,
+      g_param_spec_int ("out_h", "Output Height",
+                        "Wayland  Height size of application ",
+                        0, G_MAXINT, 0, G_PARAM_READWRITE));
+
 }
 
 static void
@@ -252,6 +266,8 @@ gst_wayland_sink_init (GstWaylandSink * sink)
   sink->enable_interlace = !DEFAULT_SUPPRESS_INTERLACE;
   sink->position_x = -1;
   sink->position_y = -1;
+  sink->out_w = -1;
+  sink->out_h = -1;
 }
 
 static void
@@ -300,6 +316,14 @@ gst_wayland_sink_get_property (GObject * object,
       /* set position_y property */
       g_value_set_int (value, sink->position_y);
       break;
+    case PROP_WAYLAND_OUTPUT_WIDTH:
+      /* set out_w property */
+      g_value_set_int (value, sink->out_w);
+      break;
+    case PROP_WAYLAND_OUTPUT_HEIGHT:
+      /* set out_h property */
+      g_value_set_int (value, sink->out_h);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -341,6 +365,14 @@ gst_wayland_sink_set_property (GObject * object,
     case PROP_WAYLAND_POSITION_Y:
       /* get position_y property */
       sink->position_y = g_value_get_int (value);
+      break;
+    case PROP_WAYLAND_OUTPUT_WIDTH:
+      /* get out_w property */
+      sink->out_w = g_value_get_int (value);
+      break;
+    case PROP_WAYLAND_OUTPUT_HEIGHT:
+      /* get out_h property */
+      sink->out_h = g_value_get_int (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -781,7 +813,8 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
       /* if we were not provided a window, create one ourselves */
       sink->window = gst_wl_window_new_toplevel (sink->display,
           &sink->video_info, sink->fullscreen, &sink->render_lock,
-          sink->position_x, sink->position_y);
+          sink->position_x, sink->position_y,
+          sink->out_w, sink->out_h);
       g_signal_connect_object (sink->window, "closed",
           G_CALLBACK (on_window_closed), sink, 0);
     }
