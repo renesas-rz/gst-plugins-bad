@@ -356,11 +356,9 @@ gst_wl_window_new_toplevel (GstWlDisplay * display, const GstVideoInfo * info,
     goto error;
   }
 
-  /* set the initial size to be the same as the reported video size */
+  /* set the initial size to be the same as the reported configuration*/
   if (!(display->xdg_wm_base && fullscreen)) {
-    gint width =
-        gst_util_uint64_scale_int_round (info->width, info->par_n, info->par_d);
-    gst_wl_window_set_render_rectangle (window, 0, 0, width, info->height);
+    gst_wl_window_set_render_rectangle (window, 0, 0, surf_w, surf_h);
   }
 
   return window;
@@ -420,7 +418,7 @@ gst_wl_window_resize_video_surface (GstWlWindow * window, gboolean commit)
 {
   GstVideoRectangle src = { 0, };
   GstVideoRectangle dst = { 0, };
-  GstVideoRectangle res;
+  GstVideoRectangle res = { 0, };
 
   /* center the video_subsurface inside area_subsurface */
   src.w = window->video_width;
@@ -429,7 +427,10 @@ gst_wl_window_resize_video_surface (GstWlWindow * window, gboolean commit)
   dst.h = window->render_rectangle.h;
 
   if (window->video_viewport) {
-    gst_video_sink_center_rect (src, dst, &res, TRUE);
+    //  gst_video_sink_center_rect (src, dst, &res, TRUE);
+    /*  We do not want to center the video since we can scale it*/
+    res.w = dst.w;
+    res.h = dst.h;
     wp_viewport_set_destination (window->video_viewport, res.w, res.h);
   } else {
     gst_video_sink_center_rect (src, dst, &res, FALSE);
