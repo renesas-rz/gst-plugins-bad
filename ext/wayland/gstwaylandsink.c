@@ -345,12 +345,19 @@ gst_wayland_sink_set_property (GObject * object,
     case PROP_FULLSCREEN:
       GST_OBJECT_LOCK (sink);
       gst_wayland_sink_set_fullscreen (sink, g_value_get_boolean (value));
+      if (sink->fullscreen && sink->use_subsurface){
+        GST_WARNING_OBJECT (sink,
+            "Could not set use_subsurface to TRUE in fullscreen mode.");
+        sink->use_subsurface = FALSE;
+      }
       GST_OBJECT_UNLOCK (sink);
     case PROP_USE_SUBSURFACE:
       GST_WARNING_OBJECT (sink, "The option \"use-subsurface\" is deprecated"
           "and this option is NOP");
       GST_OBJECT_LOCK (sink);
       sink->use_subsurface = g_value_get_boolean (value);
+      if (sink->fullscreen)
+        sink->use_subsurface = FALSE;
       GST_OBJECT_UNLOCK (sink);
       break;
     case PROP_SUPPRESS_INTERLACE:
