@@ -48,6 +48,7 @@
 #include "wlshmallocator.h"
 #include "wllinuxdmabuf.h"
 
+#include <gst/video/video.h>
 #include <gst/wayland/wayland.h>
 #include <gst/video/videooverlay.h>
 
@@ -155,7 +156,9 @@ G_DEFINE_TYPE (GstWaylandPool, gst_wayland_pool, GST_TYPE_VIDEO_BUFFER_POOL);
 static const gchar **
 gst_wayland_pool_get_options (GstBufferPool * pool)
 {
-  static const gchar *options[] = { GST_BUFFER_POOL_OPTION_VIDEO_META, NULL };
+  static const gchar *options[] = {GST_BUFFER_POOL_OPTION_VIDEO_META,
+                                   GST_BUFFER_POOL_OPTION_VIDEO_ALIGNMENT,
+                                   NULL};
   return options;
 }
 
@@ -638,6 +641,50 @@ gst_wayland_sink_get_caps (GstBaseSink * bsink, GstCaps * filter)
   return caps;
 }
 
+static void
+gst_wayland_set_alignment (GstWaylandSink * sink, GstVideoAlignment * align)
+{
+  guint stride_align, n_planes, i;
+
+  gst_video_alignment_reset (align);
+  /* In dma-buffer, ARM Mali requires strict allocation alignment for each
+   * color format. */
+  /* FIXME: In weston-8.0.0, there are 6 colors format are supported (limit by
+   * list of SHM format, including BGRA, BGRx, NV12, RGB16, YUY2, I420).
+   * Therefore, we can only confirm the alignment for them (except I420) and
+   * propose to upstream. If weston is updated, we need to define more color
+   * format in this condition */
+  switch (GST_VIDEO_FORMAT_INFO_FORMAT (sink->video_info.finfo)) {
+    case GST_VIDEO_FORMAT_BGRA:
+    case GST_VIDEO_FORMAT_BGRx:
+      stride_align = 64;
+      break;
+    case GST_VIDEO_FORMAT_RGB16:
+    case GST_VIDEO_FORMAT_NV12:
+    case GST_VIDEO_FORMAT_YUY2:
+      stride_align = 16;
+      break;
+    default:
+      /* Not confirmed */
+      stride_align = 0;
+      break;
+  }
+
+  n_planes = sink->video_info.finfo->n_planes;
+  for (i = 0; i < n_planes; i++) {
+    align->stride_align[i] = stride_align;
+  }
+
+  GST_DEBUG_OBJECT(sink, "padding top:%u, left:%u, right:%u, bottom:%u, "
+                         "stride_align %d:%d:%d:%d",
+                         align->padding_top, align->padding_left,
+                         align->padding_right, align->padding_bottom,
+                         align->stride_align[0], align->stride_align[1],
+                         align->stride_align[2], align->stride_align[3]);
+
+  return;
+}
+
 static GstBufferPool *
 gst_wayland_create_pool (GstWaylandSink * sink, GstCaps * caps)
 {
@@ -645,6 +692,7 @@ gst_wayland_create_pool (GstWaylandSink * sink, GstCaps * caps)
   GstStructure *structure;
   gsize size = sink->video_info.size;
   GstAllocator *alloc;
+  GstVideoAlignment align;
 
   pool = g_object_new (gst_wayland_pool_get_type (), NULL);
 
@@ -653,6 +701,10 @@ gst_wayland_create_pool (GstWaylandSink * sink, GstCaps * caps)
 
   alloc = gst_wl_shm_allocator_get ();
   gst_buffer_pool_config_set_allocator (structure, alloc, NULL);
+
+  gst_wayland_set_alignment (sink, &align);
+  gst_buffer_pool_config_set_video_alignment (structure, &align);
+
   if (!gst_buffer_pool_set_config (pool, structure)) {
     g_object_unref (pool);
     pool = NULL;
