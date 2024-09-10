@@ -61,11 +61,13 @@ enum
   PROP_DISPLAY,
   PROP_FULLSCREEN,
   PROP_USE_SUBSURFACE,
+  PROP_SUPPRESS_INTERLACE,
   PROP_ROTATE_METHOD,
   PROP_LAST
 };
 
 #define DEFAULT_USE_SUBSURFACE          TRUE
+#define DEFAULT_SUPPRESS_INTERLACE      TRUE
 
 GST_DEBUG_CATEGORY (gstwayland_debug);
 #define GST_CAT_DEFAULT gstwayland_debug
@@ -173,6 +175,12 @@ gst_wayland_sink_class_init (GstWaylandSinkClass * klass)
           "NOP and deprecated", DEFAULT_USE_SUBSURFACE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | G_PARAM_DEPRECATED));
 
+  g_object_class_install_property (gobject_class, PROP_SUPPRESS_INTERLACE,
+      g_param_spec_boolean ("suppress-interlace", "Suppress Interlace",
+          "When enabled, dmabuf are created without flag of interlaced buffer",
+          DEFAULT_SUPPRESS_INTERLACE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   /**
    * waylandsink:rotate-method:
    *
@@ -203,6 +211,7 @@ gst_wayland_sink_init (GstWaylandSink * self)
   g_mutex_init (&self->render_lock);
 
   self->use_subsurface = DEFAULT_USE_SUBSURFACE;
+  self->enable_interlace = !DEFAULT_SUPPRESS_INTERLACE;
 }
 
 static void
@@ -270,6 +279,11 @@ gst_wayland_sink_get_property (GObject * object,
       GST_OBJECT_LOCK (self);
       g_value_set_boolean (value, self->use_subsurface);
       GST_OBJECT_UNLOCK (self);
+    case PROP_SUPPRESS_INTERLACE:
+      GST_OBJECT_LOCK (self);
+      g_value_set_boolean (value, !self->enable_interlace);
+      GST_OBJECT_UNLOCK (self);
+      break;
     case PROP_FULLSCREEN:
       GST_OBJECT_LOCK (self);
       g_value_set_boolean (value, self->fullscreen);
@@ -304,6 +318,11 @@ gst_wayland_sink_set_property (GObject * object,
       GST_OBJECT_LOCK (self);
       self->use_subsurface = g_value_get_boolean (value);
       GST_OBJECT_UNLOCK (self);
+    case PROP_SUPPRESS_INTERLACE:
+      GST_OBJECT_LOCK (self);
+      self->enable_interlace = !g_value_get_boolean (value);
+      GST_OBJECT_UNLOCK (self);
+      break;
     case PROP_FULLSCREEN:
       GST_OBJECT_LOCK (self);
       gst_wayland_sink_set_fullscreen (self, g_value_get_boolean (value));
@@ -840,7 +859,7 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
 
     if (nb_dmabuf && (nb_dmabuf == gst_buffer_n_memory (buffer)))
       wbuf = gst_wl_linux_dmabuf_construct_wl_buffer (buffer, self->display,
-          &self->video_info);
+          &self->video_info, self->enable_interlace);
   }
 
   if (!wbuf && gst_wl_display_check_format_for_shm (self->display, format)) {

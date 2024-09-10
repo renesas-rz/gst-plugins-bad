@@ -64,6 +64,7 @@ struct _GstWaylandSink
   GstBuffer *last_buffer;
 
   gboolean use_subsurface;
+  gboolean enable_interlace;
 
   GstVideoOrientationMethod sink_rotate_method;
   GstVideoOrientationMethod tag_rotate_method;
