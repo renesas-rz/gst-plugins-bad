@@ -60,9 +60,12 @@ enum
   PROP_0,
   PROP_DISPLAY,
   PROP_FULLSCREEN,
+  PROP_USE_SUBSURFACE,
   PROP_ROTATE_METHOD,
   PROP_LAST
 };
+
+#define DEFAULT_USE_SUBSURFACE          TRUE
 
 GST_DEBUG_CATEGORY (gstwayland_debug);
 #define GST_CAT_DEFAULT gstwayland_debug
@@ -165,6 +168,11 @@ gst_wayland_sink_class_init (GstWaylandSinkClass * klass)
           "Whether the surface should be made fullscreen ", FALSE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (gobject_class, PROP_USE_SUBSURFACE,
+      g_param_spec_boolean ("use-subsurface", "Use Subsurface",
+          "NOP and deprecated", DEFAULT_USE_SUBSURFACE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | G_PARAM_DEPRECATED));
+
   /**
    * waylandsink:rotate-method:
    *
@@ -193,6 +201,8 @@ gst_wayland_sink_init (GstWaylandSink * self)
 {
   g_mutex_init (&self->display_lock);
   g_mutex_init (&self->render_lock);
+
+  self->use_subsurface = DEFAULT_USE_SUBSURFACE;
 }
 
 static void
@@ -256,6 +266,10 @@ gst_wayland_sink_get_property (GObject * object,
       g_value_set_string (value, self->display_name);
       GST_OBJECT_UNLOCK (self);
       break;
+    case PROP_USE_SUBSURFACE:
+      GST_OBJECT_LOCK (self);
+      g_value_set_boolean (value, self->use_subsurface);
+      GST_OBJECT_UNLOCK (self);
     case PROP_FULLSCREEN:
       GST_OBJECT_LOCK (self);
       g_value_set_boolean (value, self->fullscreen);
@@ -284,6 +298,12 @@ gst_wayland_sink_set_property (GObject * object,
       self->display_name = g_value_dup_string (value);
       GST_OBJECT_UNLOCK (self);
       break;
+    case PROP_USE_SUBSURFACE:
+      GST_WARNING_OBJECT (self, "The option \"use-subsurface\" is deprecated"
+          "and this option is NOP");
+      GST_OBJECT_LOCK (self);
+      self->use_subsurface = g_value_get_boolean (value);
+      GST_OBJECT_UNLOCK (self);
     case PROP_FULLSCREEN:
       GST_OBJECT_LOCK (self);
       gst_wayland_sink_set_fullscreen (self, g_value_get_boolean (value));
