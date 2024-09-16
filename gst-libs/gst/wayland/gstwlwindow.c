@@ -568,7 +568,7 @@ gst_wl_window_update_borders (GstWlWindow * self)
   }
 
   if (gst_wl_display_get_viewporter (priv->display)) {
-    width = height = 1;
+    width = height = 2;
   } else {
     width = priv->render_rectangle.w;
     height = priv->render_rectangle.h;
