@@ -63,6 +63,8 @@ struct _GstWaylandSink
   GMutex render_lock;
   GstBuffer *last_buffer;
 
+  struct wl_event_queue *frame_queue;
+
   gboolean use_subsurface;
   gboolean enable_interlace;
 

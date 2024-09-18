@@ -509,6 +509,13 @@ gst_wayland_sink_change_state (GstElement * element, GstStateChange transition)
     case GST_STATE_CHANGE_NULL_TO_READY:
       if (!gst_wayland_sink_find_display (self))
         return GST_STATE_CHANGE_FAILURE;
+
+      /* the event queue specific for wl_surface_frame events */
+      self->frame_queue = wl_display_create_queue (gst_wl_display_get_display (self->display));
+      if (!self->frame_queue) {
+        GST_ERROR_OBJECT (self, "failed to create wl_event_queue");
+        return GST_STATE_CHANGE_FAILURE;
+      }
       break;
     default:
       break;
@@ -550,9 +557,10 @@ gst_wayland_sink_change_state (GstElement * element, GstStateChange transition)
        * to avoid requesting them again from the application if/when we are
        * restarted (GstVideoOverlay behaves like that in other sinks)
        */
-      if (self->display && !self->window)       /* -> the window was toplevel */
+      if (self->display && !self->window){       /* -> the window was toplevel */
+        wl_event_queue_destroy (self->frame_queue);
         g_clear_object (&self->display);
-
+      }
       g_mutex_unlock (&self->display_lock);
       g_clear_object (&self->pool);
       break;
@@ -817,6 +825,7 @@ render_last_buffer (GstWaylandSink * self, gboolean redraw)
 
   self->redraw_pending = TRUE;
   callback = wl_surface_frame (surface);
+  wl_proxy_set_queue ((struct wl_proxy *) callback, self->frame_queue);
   self->callback = callback;
   wl_callback_add_listener (callback, &frame_callback_listener, self);
 
@@ -875,12 +884,15 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
     }
   }
 
-  /* drop buffers until we get a frame callback */
-  if (self->redraw_pending) {
-    GST_LOG_OBJECT (self, "buffer %" GST_PTR_FORMAT " dropped (redraw pending)",
-        buffer);
-    goto done;
-  }
+  g_mutex_unlock (&self->render_lock);
+  wl_display_dispatch_queue_pending ((gst_wl_display_get_display (self->display)), self->frame_queue);
+  g_mutex_lock (&self->render_lock);
+
+  while (self->redraw_pending == TRUE) {
+    g_mutex_unlock (&self->render_lock);
+    wl_display_dispatch_queue ((gst_wl_display_get_display (self->display)), self->frame_queue);
+    g_mutex_lock (&self->render_lock);
+   }
 
   /* make sure that the application has called set_render_rectangle() */
   if (G_UNLIKELY (gst_wl_window_get_render_rectangle (self->window)->w == 0))
