@@ -66,6 +66,9 @@ struct _GstWaylandSink
   gboolean use_subsurface;
   gboolean enable_interlace;
 
+  gint position_x;
+  gint position_y;
+
   GstVideoOrientationMethod sink_rotate_method;
   GstVideoOrientationMethod tag_rotate_method;
   GstVideoOrientationMethod current_rotate_method;

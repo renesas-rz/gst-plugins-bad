@@ -273,7 +273,7 @@ gst_wl_window_ensure_fullscreen (GstWlWindow * self, gboolean fullscreen)
 
 GstWlWindow *
 gst_wl_window_new_toplevel (GstWlDisplay * display, const GstVideoInfo * info,
-    gboolean fullscreen, GMutex * render_lock)
+gboolean fullscreen, GMutex * render_lock, gint posx, gint posy)
 {
   GstWlWindow *self;
   GstWlWindowPrivate *priv;
@@ -308,7 +308,17 @@ gst_wl_window_new_toplevel (GstWlDisplay * display, const GstVideoInfo * info,
     xdg_toplevel_add_listener (priv->xdg_toplevel,
         &xdg_toplevel_listener, self);
 
+
+
+
     gst_wl_window_ensure_fullscreen (self, fullscreen);
+    /* We expect wayland server can handle set new position by new window geometry */
+    if (!fullscreen && (posx != -1) && (posy != -1)){
+      /* Only re-position when input valid position and not fullscreen mode*/
+      gint width =
+        gst_util_uint64_scale_int_round (info->width, info->par_n, info->par_d);
+      xdg_surface_set_window_geometry(priv->xdg_surface, posx, posy, width, info->height);
+    }
 
     /* Finally, commit the xdg_surface state as toplevel */
     priv->configured = FALSE;
