@@ -361,10 +361,8 @@ gint out_w, gint out_h)
   /* render_rectangle is already set via toplevel_configure in
    * xdg_shell fullscreen mode */
   if (!(xdg_wm_base && fullscreen)) {
-    /* set the initial size to be the same as the reported video size */
-    gint width =
-        gst_util_uint64_scale_int_round (info->width, info->par_n, info->par_d);
-    gst_wl_window_set_render_rectangle (self, 0, 0, width, info->height);
+    /* set the initial size to be the same as the reported configuration */
+    gst_wl_window_set_render_rectangle (self, 0, 0, surf_w, surf_h);
   }
 
   return self;
@@ -452,7 +450,7 @@ gst_wl_window_resize_video_surface (GstWlWindow * self, gboolean commit)
   GstWlWindowPrivate *priv = gst_wl_window_get_instance_private (self);
   GstVideoRectangle src = { 0, };
   GstVideoRectangle dst = { 0, };
-  GstVideoRectangle res;
+  GstVideoRectangle res = { 0, };
 
   switch (priv->buffer_transform) {
     case WL_OUTPUT_TRANSFORM_NORMAL:
@@ -476,7 +474,10 @@ gst_wl_window_resize_video_surface (GstWlWindow * self, gboolean commit)
 
   /* center the video_subsurface inside area_subsurface */
   if (priv->video_viewport) {
-    gst_video_center_rect (&src, &dst, &res, TRUE);
+    //  gst_video_sink_center_rect (src, dst, &res, TRUE);
+    /*  We do not want to center the video since we can scale it*/
+    res.w = dst.w;
+    res.h = dst.h;
     wp_viewport_set_source (priv->video_viewport, wl_fixed_from_int (0),
         wl_fixed_from_int (0), wl_fixed_from_int (priv->video_width),
         wl_fixed_from_int (priv->video_height));
