@@ -68,6 +68,8 @@ struct _GstWaylandSink
 
   gint position_x;
   gint position_y;
+  gint out_w;
+  gint out_h;
 
   GstVideoOrientationMethod sink_rotate_method;
   GstVideoOrientationMethod tag_rotate_method;

@@ -63,6 +63,8 @@ enum
   PROP_USE_SUBSURFACE,
   PROP_WAYLAND_POSITION_X,    /* add property (position_x) */
   PROP_WAYLAND_POSITION_Y,    /* add property (position_y) */
+  PROP_WAYLAND_OUTPUT_WIDTH,    /* add property (out_w) */
+  PROP_WAYLAND_OUTPUT_HEIGHT,   /* add property (out_h) */
   PROP_SUPPRESS_INTERLACE,
   PROP_ROTATE_METHOD,
   PROP_LAST
@@ -189,6 +191,18 @@ gst_wayland_sink_class_init (GstWaylandSinkClass * klass)
                         "Wayland  Position Y value from the application ",
                         0, G_MAXINT, 0, G_PARAM_READWRITE));
 
+  /* install property (out_w) */
+  g_object_class_install_property (G_OBJECT_CLASS(klass), PROP_WAYLAND_OUTPUT_WIDTH,
+      g_param_spec_int ("out_w", "Output Width",
+                        "Wayland  Width size of application ",
+                        0, G_MAXINT, 0, G_PARAM_READWRITE));
+
+  /* install property (out_h) */
+  g_object_class_install_property (G_OBJECT_CLASS(klass), PROP_WAYLAND_OUTPUT_HEIGHT,
+      g_param_spec_int ("out_h", "Output Height",
+                        "Wayland  Height size of application ",
+                        0, G_MAXINT, 0, G_PARAM_READWRITE));
+
   g_object_class_install_property (gobject_class, PROP_SUPPRESS_INTERLACE,
       g_param_spec_boolean ("suppress-interlace", "Suppress Interlace",
           "When enabled, dmabuf are created without flag of interlaced buffer",
@@ -228,6 +242,9 @@ gst_wayland_sink_init (GstWaylandSink * self)
   self->enable_interlace = !DEFAULT_SUPPRESS_INTERLACE;
   self->position_x = -1;
   self->position_y = -1;
+  self->out_w = -1;
+  self->out_h = -1;
+
 }
 
 static void
@@ -308,6 +325,14 @@ gst_wayland_sink_get_property (GObject * object,
       /* set position_y property */
       g_value_set_int (value, self->position_y);
       break;
+    case PROP_WAYLAND_OUTPUT_WIDTH:
+      /* set out_w property */
+      g_value_set_int (value, self->out_w);
+      break;
+    case PROP_WAYLAND_OUTPUT_HEIGHT:
+      /* set out_h property */
+      g_value_set_int (value, self->out_h);
+      break;
     case PROP_FULLSCREEN:
       GST_OBJECT_LOCK (self);
       g_value_set_boolean (value, self->fullscreen);
@@ -354,6 +379,14 @@ gst_wayland_sink_set_property (GObject * object,
     case PROP_WAYLAND_POSITION_Y:
       /* get position_y property */
       self->position_y = g_value_get_int (value);
+      break;
+    case PROP_WAYLAND_OUTPUT_WIDTH:
+      /* get out_w property */
+      self->out_w = g_value_get_int (value);
+      break;
+    case PROP_WAYLAND_OUTPUT_HEIGHT:
+      /* get out_h property */
+      self->out_h = g_value_get_int (value);
       break;
     case PROP_FULLSCREEN:
       GST_OBJECT_LOCK (self);
@@ -833,7 +866,8 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
       /* if we were not provided a window, create one ourselves */
       self->window = gst_wl_window_new_toplevel (self->display,
           &self->video_info, self->fullscreen, &self->render_lock,
-          self->position_x, self->position_y);
+          self->position_x, self->position_y,
+          self->out_w, self->out_h);
       g_signal_connect_object (self->window, "closed",
           G_CALLBACK (on_window_closed), self, 0);
       gst_wl_window_set_rotate_method (self->window,
