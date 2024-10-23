@@ -30,7 +30,9 @@ G_DEFINE_TYPE (GstWlVideoBufferPool, gst_wl_video_buffer_pool,
 static const gchar **
 gst_wl_video_buffer_pool_get_options (GstBufferPool * pool)
 {
-  static const gchar *options[] = { GST_BUFFER_POOL_OPTION_VIDEO_META, NULL };
+  static const gchar *options[] = {GST_BUFFER_POOL_OPTION_VIDEO_META,
+                                   GST_BUFFER_POOL_OPTION_VIDEO_ALIGNMENT,
+                                   NULL};
   return options;
 }
 

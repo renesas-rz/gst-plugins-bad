@@ -46,6 +46,7 @@
 #include <gst/allocators/allocators.h>
 
 #include <gst/video/videooverlay.h>
+#include <gst/video/video.h>
 
 /* signals */
 enum
@@ -690,6 +691,50 @@ gst_wayland_sink_get_caps (GstBaseSink * bsink, GstCaps * filter)
   return caps;
 }
 
+static void
+gst_wayland_set_alignment (GstWaylandSink * self, GstVideoAlignment * align)
+{
+  guint stride_align, n_planes, i;
+
+  gst_video_alignment_reset (align);
+  /* In dma-buffer, ARM Mali requires strict allocation alignment for each
+   * color format. */
+  /* FIXME: In weston-8.0.0 and weston-13.0.0, there are 6 colors format are supported (limit by
+   * list of SHM format, including BGRA, BGRx, NV12, RGB16, YUY2, I420).
+   * Therefore, we can only confirm the alignment for them (except I420) and
+   * propose to upstream. If weston is updated, we need to define more color
+   * format in this condition */
+  switch (GST_VIDEO_FORMAT_INFO_FORMAT (self->video_info.finfo)) {
+    case GST_VIDEO_FORMAT_BGRA:
+    case GST_VIDEO_FORMAT_BGRx:
+      stride_align = 64;
+      break;
+    case GST_VIDEO_FORMAT_RGB16:
+    case GST_VIDEO_FORMAT_NV12:
+    case GST_VIDEO_FORMAT_YUY2:
+      stride_align = 16;
+      break;
+    default:
+      /* Not confirmed */
+      stride_align = 0;
+      break;
+  }
+
+  n_planes = self->video_info.finfo->n_planes;
+  for (i = 0; i < n_planes; i++) {
+    align->stride_align[i] = stride_align;
+  }
+
+  GST_DEBUG_OBJECT(self, "padding top:%u, left:%u, right:%u, bottom:%u, "
+                         "stride_align %d:%d:%d:%d",
+                         align->padding_top, align->padding_left,
+                         align->padding_right, align->padding_bottom,
+                         align->stride_align[0], align->stride_align[1],
+                         align->stride_align[2], align->stride_align[3]);
+
+  return;
+}
+
 static GstBufferPool *
 gst_wayland_create_pool (GstWaylandSink * self, GstCaps * caps)
 {
@@ -697,11 +742,15 @@ gst_wayland_create_pool (GstWaylandSink * self, GstCaps * caps)
   GstStructure *structure;
   gsize size = self->video_info.size;
   GstAllocator *alloc;
+  GstVideoAlignment align;
 
   pool = gst_wl_video_buffer_pool_new ();
 
   structure = gst_buffer_pool_get_config (pool);
   gst_buffer_pool_config_set_params (structure, caps, size, 2, 0);
+
+  gst_wayland_set_alignment (self, &align);
+  gst_buffer_pool_config_set_video_alignment (structure, &align);
 
   alloc = gst_wl_shm_allocator_get ();
   gst_buffer_pool_config_set_allocator (structure, alloc, NULL);
