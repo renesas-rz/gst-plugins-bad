@@ -818,16 +818,15 @@ render_last_buffer (GstWaylandSink * self, gboolean redraw)
   GstWlBuffer *wlbuffer;
   const GstVideoInfo *info = NULL;
   struct wl_surface *surface;
-  struct wl_callback *callback;
 
   wlbuffer = gst_buffer_get_wl_buffer (self->display, self->last_buffer);
   surface = gst_wl_window_get_wl_surface (self->window);
 
   self->redraw_pending = TRUE;
-  callback = wl_surface_frame (surface);
-  wl_proxy_set_queue ((struct wl_proxy *) callback, self->frame_queue);
-  self->callback = callback;
-  wl_callback_add_listener (callback, &frame_callback_listener, self);
+
+  self->callback = wl_surface_frame (surface);
+  wl_proxy_set_queue ((struct wl_proxy *) self->callback, self->frame_queue);
+  wl_callback_add_listener (self->callback, &frame_callback_listener, self);
 
   if (G_UNLIKELY (self->video_info_changed && !redraw)) {
     info = &self->video_info;
@@ -900,8 +899,7 @@ gst_wayland_sink_show_frame (GstVideoSink * vsink, GstBuffer * buffer)
 
   wlbuffer = gst_buffer_get_wl_buffer (self->display, buffer);
 
-  if (G_LIKELY (wlbuffer &&
-          gst_wl_buffer_get_display (wlbuffer) == self->display)) {
+  if (G_LIKELY (wlbuffer)) {
     GST_LOG_OBJECT (self,
         "buffer %" GST_PTR_FORMAT " has a wl_buffer from our display, "
         "writing directly", buffer);
