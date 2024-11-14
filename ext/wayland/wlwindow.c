@@ -254,7 +254,6 @@ gst_wl_window_new_toplevel (GstWlDisplay * display, const GstVideoInfo * info,
     gboolean fullscreen, GMutex * render_lock)
 {
   GstWlWindow *window;
-  gint width;
 
   window = gst_wl_window_new_internal (display, render_lock);
 
@@ -321,9 +320,11 @@ gst_wl_window_new_toplevel (GstWlDisplay * display, const GstVideoInfo * info,
   }
 
   /* set the initial size to be the same as the reported video size */
-  width =
-      gst_util_uint64_scale_int_round (info->width, info->par_n, info->par_d);
-  gst_wl_window_set_render_rectangle (window, 0, 0, width, info->height);
+  if (!(display->xdg_wm_base && fullscreen)) {
+    gint width =
+        gst_util_uint64_scale_int_round (info->width, info->par_n, info->par_d);
+    gst_wl_window_set_render_rectangle (window, 0, 0, width, info->height);
+  }
 
   return window;
 
@@ -550,6 +551,9 @@ gst_wl_window_set_render_rectangle (GstWlWindow * window, gint x, gint y,
     wp_viewport_set_destination (window->area_viewport, w, h);
 
   gst_wl_window_update_borders (window);
+
+  if (!window->configured)
+    return;
 
   if (window->video_width != 0) {
     wl_subsurface_set_sync (window->video_subsurface);
