@@ -262,7 +262,8 @@ gst_wl_window_ensure_fullscreen (GstWlWindow * self, gboolean fullscreen)
 {
   GstWlWindowPrivate *priv;
 
-  g_return_if_fail (self);
+  if (!self)
+    return;
 
   priv = gst_wl_window_get_instance_private (self);
   if (fullscreen)
