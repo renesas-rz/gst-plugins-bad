@@ -698,25 +698,22 @@ gst_wayland_set_alignment (GstWaylandSink * self, GstVideoAlignment * align)
 
   gst_video_alignment_reset (align);
   /* In dma-buffer, ARM Mali requires strict allocation alignment for each
-   * color format. */
-  /* FIXME: In weston-8.0.0 and weston-13.0.0, there are 6 colors format are supported (limit by
-   * list of SHM format, including BGRA, BGRx, NV12, RGB16, YUY2, I420).
-   * Therefore, we can only confirm the alignment for them (except I420) and
-   * propose to upstream. If weston is updated, we need to define more color
-   * format in this condition */
+   * color format (NV12, NV21, YV12, IYUV, I420, IMC1, IMC2, IMC3, IMC4,
+   * P210, P010 require 16-byte alignment. Others require 64-byte alignment) */
   switch (GST_VIDEO_FORMAT_INFO_FORMAT (self->video_info.finfo)) {
-    case GST_VIDEO_FORMAT_BGRA:
-    case GST_VIDEO_FORMAT_BGRx:
-      stride_align = 64;
-      break;
-    case GST_VIDEO_FORMAT_RGB16:
+    /* Currently, only NV12, NV21, YV12, I420, and P010 formats are supported
+     * by GStreamer version 1.22.12. Please add more if later versions provide
+     * additional support */
     case GST_VIDEO_FORMAT_NV12:
-    case GST_VIDEO_FORMAT_YUY2:
+    case GST_VIDEO_FORMAT_NV21:
+    case GST_VIDEO_FORMAT_YV12:
+    case GST_VIDEO_FORMAT_I420:
+    case GST_VIDEO_FORMAT_P010_10LE:
       stride_align = 16;
       break;
     default:
-      /* Not confirmed */
-      stride_align = 0;
+      /* Other formats */
+      stride_align = 64;
       break;
   }
 
