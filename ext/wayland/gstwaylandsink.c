@@ -709,11 +709,11 @@ gst_wayland_set_alignment (GstWaylandSink * self, GstVideoAlignment * align)
     case GST_VIDEO_FORMAT_YV12:
     case GST_VIDEO_FORMAT_I420:
     case GST_VIDEO_FORMAT_P010_10LE:
-      stride_align = 16;
+      stride_align = 15;
       break;
     default:
       /* Other formats */
-      stride_align = 64;
+      stride_align = 63;
       break;
   }
 
