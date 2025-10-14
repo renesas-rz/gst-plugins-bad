@@ -241,10 +241,10 @@ gst_wayland_sink_init (GstWaylandSink * self)
 
   self->use_subsurface = DEFAULT_USE_SUBSURFACE;
   self->enable_interlace = !DEFAULT_SUPPRESS_INTERLACE;
-  self->position_x = -1;
-  self->position_y = -1;
-  self->out_w = -1;
-  self->out_h = -1;
+  self->position_x = 0;
+  self->position_y = 0;
+  self->out_w = 0;
+  self->out_h = 0;
 
 }
 
