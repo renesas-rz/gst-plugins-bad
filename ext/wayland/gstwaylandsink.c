@@ -267,10 +267,10 @@ gst_wayland_sink_init (GstWaylandSink * sink)
 
   sink->use_subsurface = DEFAULT_USE_SUBSURFACE;
   sink->enable_interlace = !DEFAULT_SUPPRESS_INTERLACE;
-  sink->position_x = -1;
-  sink->position_y = -1;
-  sink->out_w = -1;
-  sink->out_h = -1;
+  sink->position_x = 0;
+  sink->position_y = 0;
+  sink->out_w = 0;
+  sink->out_h = 0;
 }
 
 static void
