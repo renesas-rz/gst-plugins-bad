@@ -300,6 +300,7 @@ gst_wl_display_thread_run (gpointer data)
   GstWlDisplay *self = data;
   GstWlDisplayPrivate *priv = gst_wl_display_get_instance_private (self);
   GstPollFD pollfd = GST_POLL_FD_INIT;
+  int ret = 0;
 
   pollfd.fd = wl_display_get_fd (priv->display);
   gst_poll_add_fd (priv->wl_fd_poll, &pollfd);
@@ -311,7 +312,11 @@ gst_wl_display_thread_run (gpointer data)
       wl_display_dispatch_queue_pending (priv->display, priv->queue);
     wl_display_flush (priv->display);
 
-    if (gst_poll_wait (priv->wl_fd_poll, GST_CLOCK_TIME_NONE) < 0) {
+    do {
+      ret = gst_poll_wait (priv->wl_fd_poll, GST_CLOCK_TIME_NONE);
+    } while (ret < 0 && errno == EINTR);
+
+    if (ret < 0) {
       gboolean normal = (errno == EBUSY);
       wl_display_cancel_read (priv->display);
       if (normal)
@@ -319,6 +324,7 @@ gst_wl_display_thread_run (gpointer data)
       else
         goto error;
     }
+
     if (wl_display_read_events (priv->display) == -1)
       goto error;
     wl_display_dispatch_queue_pending (priv->display, priv->queue);
