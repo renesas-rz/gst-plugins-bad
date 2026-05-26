@@ -233,3 +233,46 @@ gst_wl_shm_memory_construct_wl_buffer (GstMemory * mem, GstWlDisplay * display,
 
   return wbuffer;
 }
+
+void
+gst_wl_shm_get_video_info_from_caps(GstVideoInfo *info,
+    const GstCaps * caps)
+{
+  gint height, cr_h;
+
+  height = GST_VIDEO_INFO_FIELD_HEIGHT (info);
+
+  gst_video_info_from_caps (info, caps);
+
+  /* INFO: Unlike linux-dmabuf, we can only pass one stride to wl_shm API
+   * (wl_shm_pool_create_buffer()). The compositor will extrapolate strides for
+   * chroma planes based on the luma stride. For I420 format specifically,
+   * wl_shm assumes the U/V_stride = Y_stride / 2.
+   *
+   * However, when calling gst_video_info_from_caps(), Gstreamer rounds up all
+   * the strides by 4. This rounding up may cause the chroma strides mismatch
+   * with SHM expectation and fail at validation. To fix this, we should
+   * override the luma stride from the sub-planes, and re-calculate the offsets
+   * as well */
+  switch (info->finfo->format) {
+    /* FIXME: In weston-8.0.0 and weston-13.0.0, there are 6 colors format are
+     * supported (limit by list of SHM format, including BGRA, BGRx, NV12,
+     * RGB16, YUY2, I420). Only I420 is needed to re-calculate. If weston is
+     * updated, we need to define more color format in this condition */
+    case GST_VIDEO_FORMAT_I420:
+      /* Override */
+      info->stride[0] = info->stride[1] * 2;
+      /* Re-calculate offsets */
+      cr_h = GST_ROUND_UP_2 (height) / 2;
+      if (GST_VIDEO_INFO_IS_INTERLACED (info))
+        cr_h = GST_ROUND_UP_2 (cr_h);
+      info->offset[0] = 0;
+      info->offset[1] = info->stride[0] * GST_ROUND_UP_2 (height);
+      info->offset[2] = info->offset[1] + info->stride[1] * cr_h;
+      info->size = info->offset[2] + info->stride[2] * cr_h;
+      break;
+    default:
+      break;
+  }
+}
+

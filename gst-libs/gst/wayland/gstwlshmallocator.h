@@ -52,4 +52,8 @@ GST_WL_API
 struct wl_buffer * gst_wl_shm_memory_construct_wl_buffer (GstMemory * mem,
     GstWlDisplay * display, const GstVideoInfo * info);
 
+GST_WL_API
+void gst_wl_shm_get_video_info_from_caps(GstVideoInfo *info,
+    const GstCaps * caps);
+
 G_END_DECLS
